@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Generated with glade 3.38.2 -->
+<interface>
+  <requires lib="gtk+" version="3.24"/>
+  <object class="GtkAdjustment" id="adjustment1">
+    <property name="lower">3</property>
+    <property name="upper">12</property>
+    <property name="value">3</property>
+    <property name="step-increment">1</property>
+    <property name="page-increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="adjustment2">
+    <property name="upper">1e+192</property>
+    <property name="step-increment">1</property>
+    <property name="page-increment">10</property>
+  </object>
+  <object class="GtkWindow" id="ventana">
+    <property name="can-focus">False</property>
+    <child>
+      <object class="GtkPaned" id="division">
+        <property name="visible">True</property>
+        <property name="can-focus">True</property>
+        <property name="margin-right">95</property>
+        <property name="position">920</property>
+        <child>
+          <object class="GtkBox" id="box_solutions">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="orientation">vertical</property>
+            <child>
+              <object class="GtkLabel" id="lbl_count">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="margin-top">40</property>
+                <property name="margin-bottom">10</property>
+                <property name="label" translatable="yes">Soluciones: 0</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel" id="lbl_nodes">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="margin-bottom">40</property>
+                <property name="label" translatable="yes">Modelo de Votación: 0</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkDrawingArea" id="drawing_bar">
+                <property name="height-request">30</property>
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="margin-bottom">10</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkDrawingArea" id="drawing_parliament">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">3</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkScrolledWindow" id="results_scroll">
+                <property name="height-request">230</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="margin-left">20</property>
+                <property name="margin-right">20</property>
+                <property name="margin-top">10</property>
+                <property name="margin-bottom">10</property>
+                <property name="shadow-type">in</property>
+                <child>
+                  <object class="GtkViewport" id="results_view">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <child>
+                      <object class="GtkListBox" id="list_solutions">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <style>
+                          <class name="white-bg"/>
+                        </style>
+                      </object>
+                    </child>
+                    <style>
+                      <class name="white-bg"/>
+                    </style>
+                  </object>
+                </child>
+                <style>
+                  <class name="white-bg"/>
+                </style>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">4</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="resize">False</property>
+            <property name="shrink">True</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkBox" id="parametros">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="orientation">vertical</property>
+            <child>
+              <object class="GtkLabel" id="titulo">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="margin-right">30</property>
+                <property name="margin-top">20</property>
+                <property name="label" translatable="yes">ÍNDICE DE PODER
+    DE BANZHAF</property>
+                <attributes>
+                  <attribute name="font-desc" value="Sans Bold 15"/>
+                </attributes>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel" id="labelSize">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="margin-left">60</property>
+                <property name="margin-right">90</property>
+                <property name="margin-top">10</property>
+                <property name="margin-bottom">5</property>
+                <property name="label" translatable="yes">Escriba la cantidad de votantes
+               (3 a 12) y sus votos:</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkSpinButton" id="size">
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="margin-left">90</property>
+                <property name="margin-right">130</property>
+                <property name="margin-bottom">5</property>
+                <property name="input-purpose">digits</property>
+                <property name="adjustment">adjustment1</property>
+                <property name="numeric">True</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkScrolledWindow" id="scrollAI">
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="margin-left">30</property>
+                <property name="margin-right">60</property>
+                <property name="shadow-type">in</property>
+                <child>
+                  <object class="GtkViewport" id="viewportAI">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="hscroll-policy">natural</property>
+                    <property name="vscroll-policy">natural</property>
+                    <child>
+                      <object class="GtkBox" id="box_ai">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="orientation">vertical</property>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">3</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel" id="labelSum">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="margin-left">60</property>
+                <property name="margin-right">90</property>
+                <property name="margin-top">10</property>
+                <property name="margin-bottom">5</property>
+                <property name="label" translatable="yes">Votos necesarios para ganar:</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">4</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkSpinButton" id="spin_w">
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="margin-left">90</property>
+                <property name="margin-right">130</property>
+                <property name="margin-bottom">10</property>
+                <property name="input-purpose">digits</property>
+                <property name="adjustment">adjustment2</property>
+                <property name="numeric">True</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">5</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="btn_execute">
+                <property name="label" translatable="yes">Ejecutar</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+                <property name="margin-left">90</property>
+                <property name="margin-right">130</property>
+                <property name="margin-top">10</property>
+                <property name="margin-bottom">5</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">9</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="buttonFinish">
+                <property name="label" translatable="yes">Salir</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+                <property name="margin-left">90</property>
+                <property name="margin-right">130</property>
+                <property name="margin-bottom">20</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">10</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="resize">True</property>
+            <property name="shrink">True</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+  </object>
+  <object class="GtkAdjustment" id="adjustment3">
+    <property name="upper">1e+303</property>
+    <property name="step-increment">1</property>
+    <property name="page-increment">10</property>
+  </object>
+</interface>
