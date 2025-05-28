@@ -33,4 +33,8 @@ typedef struct {
 
     // Para saber cuál fila se seleccionó
     gboolean    *selected_mask;
+
+    // Para cambiar el nombre de cada votante
+    GtkEntry    *entry_name[12];
+    char        *voter_names[12];
 } AppWidgets;

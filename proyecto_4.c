@@ -76,6 +76,23 @@ static void on_solution_selected(GtkListBox *box, GtkListBoxRow *row, gpointer d
     // Volver a dibujar el gráfico del parlamento
     gtk_widget_queue_draw(GTK_WIDGET(w->drawing_parliament));
 }
+// Cuando se cambia el nombre de un votante
+static void
+on_voter_name_changed(GtkEntry *entry, gpointer user_data)
+{
+    AppWidgets *w = user_data;
+    // grab which voter this is:
+    int idx = GPOINTER_TO_INT(
+      g_object_get_data(G_OBJECT(entry), "voter-index"));
+
+    // free the old name and strdup the new one
+    g_free(w->voter_names[idx]);
+    w->voter_names[idx] =
+      g_strdup(gtk_entry_get_text(entry));
+
+    // optionally: force a redraw if you ever draw names in the chart
+    gtk_widget_queue_draw(GTK_WIDGET(w->drawing_parliament));
+}
 // Para dibujar la barra
 static gboolean on_draw_bar(GtkDrawingArea *area, cairo_t *cr, gpointer user_data) {
     AppWidgets *w = user_data;
@@ -289,52 +306,77 @@ static void on_size_value_changed(GtkSpinButton *spin, gpointer user_data) {
     // 3) Crear nuevas filas
     GPtrArray *spins = g_ptr_array_new();
     for (int i = 0; i < n; i++) {
-        // Widget para cantidad de votos
-        GtkAdjustment *adj = gtk_adjustment_new(1, 1, G_MAXINT, 1, 10, 0);
+        // 3a: Botones para los votos por votante
+        GtkAdjustment *adj    = gtk_adjustment_new(1, 1, G_MAXINT, 1, 10, 0);
         GtkWidget    *spin_ai = gtk_spin_button_new(adj, 1, 0);
-
         w->spin_ai[i] = GTK_SPIN_BUTTON(spin_ai);
 
-        GtkWidget *hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
-        char buf[16];
-        g_snprintf(buf, sizeof(buf), "a%d:", i+1);
-        gtk_box_pack_start(GTK_BOX(hbox), gtk_label_new(buf), FALSE, FALSE, 0);
-        gtk_box_pack_start(GTK_BOX(hbox), spin_ai, FALSE, FALSE, 0);
-
-        // Cuando se cambian los ais
+        // Modificar los valores cuando hay un cambio
         g_signal_connect(spin_ai, "value-changed", G_CALLBACK(on_data_changed), w);
         g_ptr_array_add(spins, spin_ai);
 
-        // Agregar elección de color
+        // 3b: Ingresar un nombre por votante y tener los dos puntos (:)
+        char buf[16];
+        g_snprintf(buf, sizeof(buf), "a%d", i+1);
+
+        GtkWidget *entry = gtk_entry_new();
+        w->entry_name[i] = GTK_ENTRY(entry);
+
+        // Inicializar o guardar el nombre cambiado
+        if (w->voter_names[i]) {
+            gtk_entry_set_text(GTK_ENTRY(entry), w->voter_names[i]);
+        } else {
+            w->voter_names[i] = g_strdup(buf);
+            gtk_entry_set_text(GTK_ENTRY(entry), buf);
+        }
+
+        // Tamaño de espacio para el nombre
+        gtk_entry_set_width_chars(GTK_ENTRY(entry), 6);
+        gtk_widget_set_hexpand(entry, FALSE);
+
+        // Mostrar los cambios cuando se modifica un nombre
+        g_object_set_data(G_OBJECT(entry), "voter-index", GINT_TO_POINTER(i));
+        g_signal_connect(entry, "changed", G_CALLBACK(on_voter_name_changed), w);
+
+        GtkWidget *colon = gtk_label_new(":");
+
+        // 3c: Escoger un color
         GtkWidget *cb = gtk_color_button_new();
         w->colorbtn[i] = GTK_COLOR_BUTTON(cb);
-
-        // Mostrar color elegido
         g_object_set_data(G_OBJECT(cb), "voter-index", GINT_TO_POINTER(i));
         gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(cb), &w->last_color[i]);
-
-        // Mostras si se cambió un color
         g_signal_connect(cb, "color-set", G_CALLBACK(on_color_changed), w);
-        gtk_box_pack_start(GTK_BOX(hbox), cb, FALSE, FALSE, 0);
         g_signal_connect(cb, "color-set", G_CALLBACK(on_data_changed), w);
 
-        // Crear label para IPB
+        // 3.d: Para poder tener el label de IPB debajo de cada votante
+        GtkWidget *cell_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
+
+        // EN la fila de arriba se tiene el nombre, la cantidad de votos y el color
+        GtkWidget *hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
+        gtk_box_pack_start(GTK_BOX(hbox), entry,   FALSE, FALSE, 0);
+        gtk_box_pack_start(GTK_BOX(hbox), colon,   FALSE, FALSE, 0);
+        gtk_box_pack_start(GTK_BOX(hbox), spin_ai, FALSE, FALSE, 0);
+        gtk_box_pack_start(GTK_BOX(hbox), cb,      FALSE, FALSE, 0);
+
+        // En la fila de abajo se tiene el label IBP
         char ibp_txt[32];
         g_snprintf(ibp_txt, sizeof(ibp_txt), "IBP: —");
         GtkWidget *lbl = gtk_label_new(ibp_txt);
-        w->lbl_ibp[i] = GTK_LABEL(lbl);
-        gtk_box_pack_start(GTK_BOX(hbox), lbl, FALSE, FALSE, 0);
+        w->lbl_ibp[i]  = GTK_LABEL(lbl);
 
-        // Agregar la fila
-        gtk_box_pack_start(GTK_BOX(w->box_ai), hbox, FALSE, FALSE, 2);
-        gtk_widget_show_all(hbox);
+        // Mostrar cada votante
+        gtk_box_pack_start(GTK_BOX(cell_vbox), hbox, FALSE, FALSE, 0);
+        gtk_box_pack_start(GTK_BOX(cell_vbox), lbl,  FALSE, FALSE, 0);
+        gtk_box_pack_start(GTK_BOX(w->box_ai),  cell_vbox, FALSE, FALSE, 2);
+        gtk_widget_show_all(cell_vbox);
     }
 
-    // Modificar la cantidad de votos para que vayan de menor a mayor
+    // Mostrar cambios cuando se cambia un valor
     for (guint i = 0; i + 1 < spins->len; i++) {
         GtkSpinButton *prev = g_ptr_array_index(spins, i);
         GtkSpinButton *next = g_ptr_array_index(spins, i+1);
-        g_signal_connect(prev, "value-changed", G_CALLBACK(on_prev_ai_changed), next);
+        g_signal_connect(prev, "value-changed",
+                        G_CALLBACK(on_prev_ai_changed), next);
     }
     g_ptr_array_free(spins, TRUE);
 
@@ -471,7 +513,7 @@ int main(int argc, char *argv[]) {
     GtkBuilder *builder = gtk_builder_new_from_file("interfaz.glade");
     AppWidgets *w = g_new0(AppWidgets, 1);
 
-    // Panel derecho: a_i y Δ
+    // Panel derecho: a_i
     w->box_ai = GTK_BOX(gtk_builder_get_object(builder, "box_ai"));
     
     for (int i = 0; i < 12; i++) {
@@ -484,6 +526,13 @@ int main(int argc, char *argv[]) {
 
     // Spin de W
     w->spin_w = GTK_SPIN_BUTTON(gtk_builder_get_object(builder, "spin_w"));
+
+    // Nombres de cada votante
+    for (int i = 0; i < 12; i++) {
+        w->entry_name[i]   = NULL;
+        w->voter_names[i]  = NULL;
+        }
+        w->selected_mask = NULL;
 
     // Resultados
     w->lbl_count = GTK_LABEL(gtk_builder_get_object(builder, "lbl_count"));
