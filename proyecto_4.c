@@ -1,12 +1,13 @@
 /*
-                Proyecto 3: Suma de Subconjuntos
+                Proyecto 4: Índice de Poder de Banzhaf
                 Hecho por: Carmen Hidalgo Paz, Jorge Guevara Chavarría y Ricardo Castro Jiménez
-                Fecha: Jueves 15 de mayo del 2025
+                Fecha: Martes 3 de junio del 2025
 
                 Esta sección contiene el main, donde se indica lo que tiene que hacer
                 cada objeto mostrado en la interfaz. Además se tienen funciones para
-                verificar el valor delta, modificar la cantidad de números del conjunto
-                que desea el usuario y lo que ocurre cuando se presiona el botón ejecutar.
+                modificar la cantidad de números del conjunto que desea el usuario,
+                lo que ocurre cuando se presiona el botón ejecutar y el dibujo de la
+                barra y el gráfico estilo parlamento.
 */
 #include <gtk/gtk.h>
 #include <cairo.h>
@@ -15,30 +16,29 @@
 #include <math.h>
 #include <glib.h>
 #include "Widgets.h"
-#include "Variantes.h"
+#include "Backtracking.h"
 
 #define _USE_MATH_DEFINES
 
 // Contadores
 int nodos = 0;
 int soluciones = 0;
-int delta = 0;
 
+// Colores iniciales para los votantes
 static const char *default_colors[12] = {
-    "#1f77b4", // blue
-    "#ff7f0e", // orange
-    "#2ca02c", // green
-    "#d62728", // red
-    "#9467bd", // purple
-    "#8c564b", // brown
-    "#e377c2", // pink
-    "#f5c211", // yellow
-    "#195903", // dark green
-    "#17becf", // cyan
-    "#aec7e8", // light‐blue
-    "#ffbb78"  // light‐orange
+    "#1f77b4", // azul
+    "#ff7f0e", // naranja
+    "#2ca02c", // verde claro
+    "#d62728", // rojo
+    "#9467bd", // morado
+    "#8c564b", // café
+    "#e377c2", // rosado
+    "#f5c211", // amarillo
+    "#195903", // verde oscuro
+    "#17becf", // cian
+    "#aec7e8", // celeste
+    "#ffbb78"  // piel
 };
-
 // Para que no se mueva la línea del panel
 void fijar_panel(GtkPaned *panel, GParamSpec *pspec, gpointer user_data) {
     // Posición donde se fija la división
@@ -48,39 +48,35 @@ void fijar_panel(GtkPaned *panel, GParamSpec *pspec, gpointer user_data) {
         gtk_paned_set_position(panel, pos_fijada);
     }
 }
+// VOlver a pintar los dibujos cuando algún dato se modifica
 static void on_data_changed(GtkWidget *widget, gpointer user_data) {
     AppWidgets *w = user_data;
     gtk_widget_queue_draw(GTK_WIDGET(w->drawing_bar));
     gtk_widget_queue_draw(GTK_WIDGET(w->drawing_parliament));
 }
+// Volver a pintar la barra cuando algún color se modifica
 static void on_color_changed(GtkColorButton *btn, gpointer user_data) {
   AppWidgets *w = user_data;
-  int i = GPOINTER_TO_INT(
-            g_object_get_data(G_OBJECT(btn), "voter-index"));
-  gtk_color_chooser_get_rgba(
-      GTK_COLOR_CHOOSER(btn),
-      &w->last_color[i]);
+  int i = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(btn), "voter-index"));
+  gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(btn), &w->last_color[i]);
   gtk_widget_queue_draw(GTK_WIDGET(w->drawing_bar));
 }
-static void
-on_solution_selected(GtkListBox   *box,
-                     GtkListBoxRow*row,
-                     gpointer      data)
-{
+// Mostrar cambios en el dibujo de parlamento cuando se selecciona una solución
+static void on_solution_selected(GtkListBox *box, GtkListBoxRow *row, gpointer data) {
     AppWidgets *w = data;
 
     if (row) {
-        // get the mask we stored on this row
-        w->selected_mask =
-          g_object_get_data(G_OBJECT(row), "mask");
+        // Obtener la fila seleccionada
+        w->selected_mask = g_object_get_data(G_OBJECT(row), "mask");
     }
     else {
         w->selected_mask = NULL;
     }
 
-    // force a redraw of the drawing area
+    // Volver a dibujar el gráfico del parlamento
     gtk_widget_queue_draw(GTK_WIDGET(w->drawing_parliament));
 }
+// Para dibujar la barra
 static gboolean on_draw_bar(GtkDrawingArea *area, cairo_t *cr, gpointer user_data) {
     AppWidgets *w = user_data;
     GtkAllocation alloc;
@@ -88,28 +84,26 @@ static gboolean on_draw_bar(GtkDrawingArea *area, cairo_t *cr, gpointer user_dat
     int W = alloc.width;
     int H = alloc.height;
 
-    /* how many voters are active? */
-    /* if you track `n` globally or in w, grab that; otherwise
-       you can scan spin_ai[] until NULL */
+    // Contar cantidad de votantes
     int n = 0;
     while (n < 12 && w->spin_ai[n]) n++;
 
-    /* read all vote‐counts and total them */
+    // Contar todos los votos
     int total = 0;
     int votes[12];
     for (int i = 0; i < n; i++) {
         votes[i] = gtk_spin_button_get_value_as_int(w->spin_ai[i]);
         total += votes[i];
     }
-    if (total == 0) return FALSE;  /* nothing to draw */
+    if (total == 0) return FALSE;
 
-    /* draw each slice */
+    // Dibujar cada fracción en la barra
     int x = 0;
     for (int i = 0; i < n; i++) {
         double frac = (double)votes[i] / total;
         int slice_w = frac * W;
 
-        /* pick up the voter’s color */
+        // Escoger el color del votante
         GdkRGBA col;
         gtk_color_chooser_get_rgba(
             GTK_COLOR_CHOOSER(w->colorbtn[i]), &col);
@@ -123,22 +117,23 @@ static gboolean on_draw_bar(GtkDrawingArea *area, cairo_t *cr, gpointer user_dat
 
     return FALSE;
 }
+// Dibujar el gráfico estilo parlamento
 static gboolean on_draw_parliament(GtkDrawingArea *area, cairo_t *cr, gpointer user_data) {
     AppWidgets *w = user_data;
     GtkAllocation alloc;
     gtk_widget_get_allocation(GTK_WIDGET(area), &alloc);
     double W = alloc.width, H = alloc.height;
 
-    // grab the user’s current row‐selection mask
+    // Obtener la selección de la fila que el usuario escogió
     gboolean *sel = w->selected_mask;
 
-    // define a uniform “disabled” gray
-    GdkRGBA gray = { .red   = 1.0,
+    // Definir el color blanco, que son los que no son parte de la coalición ganadora
+    GdkRGBA white = { .red   = 1.0,
                      .green = 1.0,
                      .blue  = 1.0,
                      .alpha = 1.0 };
 
-    // 1) Read votes & total them
+    // 1) Leer votos y obtener el total
     int votes[12], n = 0, total = 0;
     while (n < 12 && w->spin_ai[n]) {
         votes[n] = gtk_spin_button_get_value_as_int(w->spin_ai[n]);
@@ -147,65 +142,76 @@ static gboolean on_draw_parliament(GtkDrawingArea *area, cairo_t *cr, gpointer u
     }
     if (n == 0 || total == 0) return FALSE;
 
-    // 2) Base geometry
+    // 2) Geometría para los márgenes y el centro del círculo
     const double margin  = 20.0;
-    const double cx      = W/2.0;
-    const double cy      = H - margin;
+    const double cx = W/2.0;
+    const double cy = H - margin;
 
-    // logical radius used for all spacing/fit calculations:
-    double dr_logic      = MIN(W, H) * 0.02;
-    double row_gap       = dr_logic * 2.4;
-    double r_base        = MIN(cx, cy - dr_logic) - dr_logic;
+    // Lógica para el espaciado
+    // Para saber cuántos puntos caben en un anillo
+    double dr_logic = MIN(W, H) * 0.02;
+    // Para saber cuánto espacio por fila
+    double row_gap = dr_logic * 2.4;
+    // El radio del primer anillo
+    double r_base = MIN(cx, cy - dr_logic) - dr_logic;
+    // Tamaño de cada punto
+    double dr_draw = dr_logic * 0.6;
 
-    // actual draw radius (e.g. 60% of logical):
-    double dr_draw       = dr_logic * 0.6;
-
-    // 3) For each voter, carve out its angular slice and fill ring by ring
-    double angle_cursor = M_PI;  // start at leftmost
+    // 3) Cada vontante tiene su pedazo triangular
+    // Saber donde se está en la mitad del círculo
+    double angle_cursor = M_PI;
+    // Un pedazo por votante
     for (int i = 0; i < n; i++) {
         int seats = votes[i];
         if (seats <= 0) continue;
 
-        // 3a) compute wedge angles
-        double ang_span  = M_PI * seats / total;
+        // 3a) Obtener los ángulos de cada pedazo
+        // Cuantos radianes debe tomar el pedazo
+        double ang_span = M_PI * seats / total;
+        // Donde es que empieza
         double ang_start = angle_cursor;
-        double ang_end   = angle_cursor - ang_span;
-        angle_cursor     = ang_end; // for the next wedge
+        // Donde es que termina 
+        double ang_end = angle_cursor - ang_span;
+        // Para saber donde comienza el siguiente pedazo
+        angle_cursor = ang_end;
 
-        // 3b) fill this wedge in concentric rings
+        // 3b) Llenar el pedazo con puntos
+        // Cantidad de puntos que hay que dibujar
         int  remaining = seats;
-        double r       = r_base;
+        // Anillo donde se inicia
+        double r = r_base;
+        // Mientras haya que seguir dibujando y no se acabe el espacio del anillo
         while (remaining > 0 && r >= dr_logic) {
-            // ==== DYNAMIC per‐ring capacity ====
-            // how many can fit on this ring?
+            // Ir dibujando en los anillos
+            // Se aproxima la longitud del arco y se divide por el diámetro
+            // para obtener la cantidad de puntos máximo por anillo
             int fit = (int)floor((r * ang_span) / (2.0 * dr_logic)) + 1;
             if (fit < 1) fit = 1;
+            // Cantidad de puntos que faltan después de llenar el anillo
             int draw_count = remaining < fit ? remaining : fit;
 
-            // draw exactly draw_count dots
+            // Dibujar los puntos
             for (int k = 0; k < draw_count; k++) {
-                // space them in the *interior* of the slice:
+                // Espaciado de cada punto
                 double step = ang_span / (double)draw_count;
-                double t    = ang_start - (k + 0.5) * step;
+                double t = ang_start - (k + 0.5) * step;
 
+                // Centro del punto
                 double x = cx + r * cos(t);
                 double y = cy - r * sin(t);
 
-                // pick this voter’s color
+                // Escoger el color del votante
                 GdkRGBA col;
                 if (sel && !sel[i]) {
-                    col = gray;
+                    col = white;
                 } else {
                     gtk_color_chooser_get_rgba(
                     GTK_COLOR_CHOOSER(w->colorbtn[i]),
                     &col);
                 }
-                cairo_set_source_rgba(cr,
-                                    col.red,
-                                    col.green,
-                                    col.blue,
-                                    col.alpha);
+                cairo_set_source_rgba(cr, col.red, col.green, col.blue, col.alpha);
 
+                // Pintar el punto
                 cairo_arc(cr, x, y, dr_draw, 0, 2*M_PI);
                 cairo_fill(cr);
             }
@@ -259,7 +265,7 @@ static void on_size_value_changed(GtkSpinButton *spin, gpointer user_data) {
     if (n < 3)  n = 3;
     if (n > 12) n = 12;
 
-    // 0) Harvest any existing color‐button values:
+    // 0) Obtener colores de cada votante
     for (int i = 0; i < 12; i++) {
         if (w->colorbtn[i]) {
             gtk_color_chooser_get_rgba(
@@ -267,69 +273,64 @@ static void on_size_value_changed(GtkSpinButton *spin, gpointer user_data) {
                 &w->last_color[i]);
         }
     }
-
-    /*— 1) Destroy old rows —*/
+    // 1) Destruir filas viejas
     GList *kids = gtk_container_get_children(GTK_CONTAINER(w->box_ai));
     for (GList *it = kids; it; it = it->next)
         gtk_widget_destroy(GTK_WIDGET(it->data));
     g_list_free(kids);
 
-    /*— 2) Clear out any stale pointers —*/
+    // 2) Limpiar punteros
     for (int i = 0; i < 12; i++) {
         w->spin_ai[i]   = NULL;
         w->colorbtn[i]  = NULL;
         w->lbl_ibp[i]   = NULL;
     }
 
-    /*— 3) Build new rows —*/
+    // 3) Crear nuevas filas
     GPtrArray *spins = g_ptr_array_new();
     for (int i = 0; i < n; i++) {
-        /* a) the vote‐count spin as before */
+        // Widget para cantidad de votos
         GtkAdjustment *adj = gtk_adjustment_new(1, 1, G_MAXINT, 1, 10, 0);
         GtkWidget    *spin_ai = gtk_spin_button_new(adj, 1, 0);
 
-        /* ← NEW: remember it in your struct */
         w->spin_ai[i] = GTK_SPIN_BUTTON(spin_ai);
 
-        /* pack label + spin */
         GtkWidget *hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
         char buf[16];
         g_snprintf(buf, sizeof(buf), "a%d:", i+1);
         gtk_box_pack_start(GTK_BOX(hbox), gtk_label_new(buf), FALSE, FALSE, 0);
         gtk_box_pack_start(GTK_BOX(hbox), spin_ai, FALSE, FALSE, 0);
 
-        /* recálculo de ais */
+        // Cuando se cambian los ais
         g_signal_connect(spin_ai, "value-changed", G_CALLBACK(on_data_changed), w);
         g_ptr_array_add(spins, spin_ai);
 
-        /* — NEW: create a color‐picker — */
+        // Agregar elección de color
         GtkWidget *cb = gtk_color_button_new();
         w->colorbtn[i] = GTK_COLOR_BUTTON(cb);
 
-        // tag and set the *harvested* color
+        // Mostrar color elegido
         g_object_set_data(G_OBJECT(cb), "voter-index", GINT_TO_POINTER(i));
         gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(cb), &w->last_color[i]);
 
-        // now hook the change to update last_color[] + redraw
+        // Mostras si se cambió un color
         g_signal_connect(cb, "color-set", G_CALLBACK(on_color_changed), w);
-
         gtk_box_pack_start(GTK_BOX(hbox), cb, FALSE, FALSE, 0);
-
         g_signal_connect(cb, "color-set", G_CALLBACK(on_data_changed), w);
 
-        /* — NEW: create an “IBP: —” label placeholder — */
+        // Crear label para IPB
         char ibp_txt[32];
         g_snprintf(ibp_txt, sizeof(ibp_txt), "IBP: —");
         GtkWidget *lbl = gtk_label_new(ibp_txt);
         w->lbl_ibp[i] = GTK_LABEL(lbl);
         gtk_box_pack_start(GTK_BOX(hbox), lbl, FALSE, FALSE, 0);
 
-        /* finally add the completed row */
+        // Agregar la fila
         gtk_box_pack_start(GTK_BOX(w->box_ai), hbox, FALSE, FALSE, 2);
         gtk_widget_show_all(hbox);
     }
 
-    /* reconnect the chaining on spins, as you had it */
+    // Modificar la cantidad de votos para que vayan de menor a mayor
     for (guint i = 0; i + 1 < spins->len; i++) {
         GtkSpinButton *prev = g_ptr_array_index(spins, i);
         GtkSpinButton *next = g_ptr_array_index(spins, i+1);
@@ -337,6 +338,7 @@ static void on_size_value_changed(GtkSpinButton *spin, gpointer user_data) {
     }
     g_ptr_array_free(spins, TRUE);
 
+    // Mostrar la barra y el gráfico de parlamento
     gtk_widget_queue_draw(GTK_WIDGET(w->drawing_bar));
     gtk_widget_queue_draw(GTK_WIDGET(w->drawing_parliament));
 }
@@ -401,11 +403,11 @@ static void on_execute_clicked(GtkButton *btn, gpointer data) {
     for (guint s = 0; s < sol_list->len; s++) {
         gboolean *mask = g_ptr_array_index(sol_list, s);
 
-        // 1) Make a copy of the mask so it outlives our temporary 'sol_list'
+        // 8a) Para poder guardar la fila escogida
         gboolean *mask_copy = g_new(gboolean, n);
         memcpy(mask_copy, mask, sizeof(gboolean) * n);
 
-        // 2) Build the row & its checkbuttons exactly as before
+        // 8b) Crear la fila con sus checkboxes
         GtkListBoxRow *row = GTK_LIST_BOX_ROW(gtk_list_box_row_new());
         GtkWidget *hbox   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
 
@@ -426,13 +428,10 @@ static void on_execute_clicked(GtkButton *btn, gpointer data) {
 
         gtk_container_add(GTK_CONTAINER(row), hbox);
 
-        // 3) Attach the copy to the row; free it automatically when row is destroyed
-        g_object_set_data_full(G_OBJECT(row),
-                            "mask",
-                            mask_copy,
-                            g_free);
+        // 8c) Cuando se selecciona una fila se obtienen los datos de esta
+        g_object_set_data_full(G_OBJECT(row), "mask", mask_copy, g_free);
 
-        // 4) Insert the row into the list
+        // 8d) Agregar la fila a la lista
         gtk_list_box_insert(GTK_LIST_BOX(w->box_results),
                             GTK_WIDGET(row),
                             -1);
