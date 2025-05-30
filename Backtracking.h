@@ -6,7 +6,7 @@
                 las soluciones y la suma de los ai que no sea han revisado
                 todavía.
 */
-extern int nodos, soluciones;
+//extern int nodos, soluciones;
 static int *suffix_sum;
 
 /*
@@ -122,8 +122,8 @@ void sumaSubconjuntosV2_collect(int* A, int n, int W, int index, int* actual_idx
 void sumaSubconjuntosV3_collect(int* A, int n, int W, int index, int* actual_idx,
                                 int tam_actual, int suma_actual, GPtrArray *sol_list) {
     // Contadores
-    extern int nodos, soluciones;
-    nodos++;
+    //extern int nodos, soluciones;
+    //nodos++;
 
     // 0) Se poda si ni siquiera con todo lo que queda se llega a W
     if (suma_actual + suffix_sum[index] < W) {
@@ -134,7 +134,7 @@ void sumaSubconjuntosV3_collect(int* A, int n, int W, int index, int* actual_idx
     if (index == n) {
         // Si la suma es mayor o igual a W, es solución
         if (suma_actual >= W) {
-            soluciones++;
+            //soluciones++;
             gboolean *mask = g_new0(gboolean, n);
             for (int j = 0; j < tam_actual; j++)
                 mask[ actual_idx[j] ] = TRUE;

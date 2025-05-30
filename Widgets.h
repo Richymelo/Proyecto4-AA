@@ -14,8 +14,9 @@ typedef struct {
     GtkSpinButton *spin_w;
 
     /* Resultados */
-    GtkLabel     *lbl_count;
-    GtkLabel     *lbl_nodes;
+    //GtkLabel     *lbl_count;
+    //GtkLabel     *lbl_nodes;
+    GtkLabel     *lbl_model;
     GtkListBox   *box_results;
 
     /* Botón “Ejecutar” */

@@ -21,8 +21,8 @@
 #define _USE_MATH_DEFINES
 
 // Contadores
-int nodos = 0;
-int soluciones = 0;
+//int nodos = 0;
+//int soluciones = 0;
 
 // Colores iniciales para los votantes
 static const char *default_colors[12] = {
@@ -48,11 +48,56 @@ void fijar_panel(GtkPaned *panel, GParamSpec *pspec, gpointer user_data) {
         gtk_paned_set_position(panel, pos_fijada);
     }
 }
-// VOlver a pintar los dibujos cuando algún dato se modifica
+// Cambiar el label con la información del modelo
+static void update_model_label(AppWidgets *w)
+{
+    // Leer el valor de W
+    int K = gtk_spin_button_get_value_as_int(w->spin_w);
+
+    // Obtener cantidad de votantes
+    int n = 0;
+    for (; n < 12; n++) {
+        if (!w->spin_ai[n]) break;
+    }
+
+    // Crear la lista con los nombres de los votantes
+    GString *names = g_string_new(NULL);
+    for (int i = 0; i < n; i++) {
+        if (i) g_string_append(names, ", ");
+        g_string_append(names, w->voter_names[i]);
+    }
+
+    // Crear la lista con los valores de los votos
+    GString *values = g_string_new(NULL);
+    for (int i = 0; i < n; i++) {
+        int v = gtk_spin_button_get_value_as_int(w->spin_ai[i]);
+        if (i) g_string_append(values, ", ");
+        g_string_append_printf(values, "%d", v);
+    }
+
+    // Crear todo el label
+    char *text = g_strdup_printf(
+        "Modelo (%d; %s): (%d; %s)",
+        K,
+        names->str,
+        K,
+        values->str
+    );
+
+    // Guardarlo en el label
+    gtk_label_set_text(w->lbl_model, text);
+
+    // Borrar memoria utilizada
+    g_free(text);
+    g_string_free(names, TRUE);
+    g_string_free(values, TRUE);
+}
+// Volver a pintar los dibujos cuando algún dato se modifica
 static void on_data_changed(GtkWidget *widget, gpointer user_data) {
     AppWidgets *w = user_data;
     gtk_widget_queue_draw(GTK_WIDGET(w->drawing_bar));
     gtk_widget_queue_draw(GTK_WIDGET(w->drawing_parliament));
+    update_model_label(w);
 }
 // Volver a pintar la barra cuando algún color se modifica
 static void on_color_changed(GtkColorButton *btn, gpointer user_data) {
@@ -77,21 +122,19 @@ static void on_solution_selected(GtkListBox *box, GtkListBoxRow *row, gpointer d
     gtk_widget_queue_draw(GTK_WIDGET(w->drawing_parliament));
 }
 // Cuando se cambia el nombre de un votante
-static void
-on_voter_name_changed(GtkEntry *entry, gpointer user_data)
-{
+static void on_voter_name_changed(GtkEntry *entry, gpointer user_data) {
     AppWidgets *w = user_data;
-    // grab which voter this is:
+    
+    // Obtener el votante al que se le está haciendo el cambio
     int idx = GPOINTER_TO_INT(
       g_object_get_data(G_OBJECT(entry), "voter-index"));
 
-    // free the old name and strdup the new one
+    // GUardar el nuevo nombre
     g_free(w->voter_names[idx]);
-    w->voter_names[idx] =
-      g_strdup(gtk_entry_get_text(entry));
+    w->voter_names[idx] = g_strdup(gtk_entry_get_text(entry));
 
-    // optionally: force a redraw if you ever draw names in the chart
-    gtk_widget_queue_draw(GTK_WIDGET(w->drawing_parliament));
+    // Volver a mostrar el label con el modelo con los cambios
+    update_model_label(w);
 }
 // Para dibujar la barra
 static gboolean on_draw_bar(GtkDrawingArea *area, cairo_t *cr, gpointer user_data) {
@@ -122,8 +165,7 @@ static gboolean on_draw_bar(GtkDrawingArea *area, cairo_t *cr, gpointer user_dat
 
         // Escoger el color del votante
         GdkRGBA col;
-        gtk_color_chooser_get_rgba(
-            GTK_COLOR_CHOOSER(w->colorbtn[i]), &col);
+        gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(w->colorbtn[i]), &col);
         cairo_set_source_rgba(cr, col.red, col.green, col.blue, col.alpha);
 
         cairo_rectangle(cr, x, 0, slice_w, H);
@@ -334,9 +376,11 @@ static void on_size_value_changed(GtkSpinButton *spin, gpointer user_data) {
         gtk_entry_set_width_chars(GTK_ENTRY(entry), 6);
         gtk_widget_set_hexpand(entry, FALSE);
 
-        // Mostrar los cambios cuando se modifica un nombre
+        // Mostrar los cambios cuando se modifica un nombre o número
         g_object_set_data(G_OBJECT(entry), "voter-index", GINT_TO_POINTER(i));
         g_signal_connect(entry, "changed", G_CALLBACK(on_voter_name_changed), w);
+        g_signal_connect(spin_ai, "value-changed", G_CALLBACK(on_data_changed), w);
+        g_signal_connect(w->spin_w, "value-changed", G_CALLBACK(on_data_changed), w);
 
         GtkWidget *colon = gtk_label_new(":");
 
@@ -375,37 +419,44 @@ static void on_size_value_changed(GtkSpinButton *spin, gpointer user_data) {
     for (guint i = 0; i + 1 < spins->len; i++) {
         GtkSpinButton *prev = g_ptr_array_index(spins, i);
         GtkSpinButton *next = g_ptr_array_index(spins, i+1);
-        g_signal_connect(prev, "value-changed",
-                        G_CALLBACK(on_prev_ai_changed), next);
+        g_signal_connect(prev, "value-changed", G_CALLBACK(on_prev_ai_changed), next);
     }
     g_ptr_array_free(spins, TRUE);
 
     // Mostrar la barra y el gráfico de parlamento
     gtk_widget_queue_draw(GTK_WIDGET(w->drawing_bar));
     gtk_widget_queue_draw(GTK_WIDGET(w->drawing_parliament));
+    update_model_label(w);
 }
 // Cuando se presiona el botón de ejecutar
 static void on_execute_clicked(GtkButton *btn, gpointer data) {
     AppWidgets *w = data;
-    extern int nodos, soluciones;
+    //extern int nodos, soluciones;
 
     // Leer todos los ai
-    GList *kids = gtk_container_get_children(
-                      GTK_CONTAINER(w->box_ai));
-    int n = g_list_length(kids);
+    GList *rows = gtk_container_get_children(GTK_CONTAINER(w->box_ai));
+    int  n = g_list_length(rows);
     int *A = malloc(sizeof(int) * n);
-    for (int i = 0; i < n; i++) {
-        GtkBox *hrow = GTK_BOX(g_list_nth_data(kids, i));
-        GList *rowkids = gtk_container_get_children(GTK_CONTAINER(hrow));
-        if (g_list_length(rowkids) >= 2) {
-            GtkSpinButton *sp = GTK_SPIN_BUTTON(g_list_nth_data(rowkids, 1));
-            A[i] = gtk_spin_button_get_value_as_int(sp);
-        } else {
-            A[i] = 0;
-        }
-        g_list_free(rowkids);
+
+    int i = 0;
+    for (GList *r = rows; r; r = r->next, i++) {
+        GtkWidget *cell_vbox = GTK_WIDGET(r->data);
+
+        // Obtener el ai
+        GList *vbox_kids = gtk_container_get_children(GTK_CONTAINER(cell_vbox));
+        GtkWidget *hbox = GTK_WIDGET(vbox_kids->data);
+        g_list_free(vbox_kids);
+
+        // Obtener el valor de los votos
+        GList *hbox_kids = gtk_container_get_children(GTK_CONTAINER(hbox));
+        GtkSpinButton *sp = GTK_SPIN_BUTTON(g_list_nth_data(hbox_kids, 2));
+        g_list_free(hbox_kids);
+
+        //  Leer el valor
+        A[i] = gtk_spin_button_get_value_as_int(sp);
     }
-    g_list_free(kids);
+
+    g_list_free(rows);
 
     // Leer W
     int W = gtk_spin_button_get_value_as_int(w->spin_w);
@@ -422,9 +473,8 @@ static void on_execute_clicked(GtkButton *btn, gpointer data) {
     }
 
     // 4) Se prepara sol_list, que es la lista de soluciones
-    nodos = soluciones = 0;
-    GPtrArray *sol_list =
-        g_ptr_array_new_with_free_func(g_free);
+    //nodos = soluciones = 0;
+    GPtrArray *sol_list = g_ptr_array_new_with_free_func(g_free);
     int actual_idx[12];
 
     // 5) Se ejecuta el backtracking para obtener las soluciones
@@ -432,8 +482,8 @@ static void on_execute_clicked(GtkButton *btn, gpointer data) {
     sumaSubconjuntosV3_collect(A, n, W, 0, actual_idx, 0, 0, sol_list);
 
     // 6) Actualizar labels de cantidad de soluciones y nodos recorridos
-    gtk_label_set_text(w->lbl_count, g_strdup_printf("Soluciones: %u", sol_list->len));
-    gtk_label_set_text(w->lbl_nodes, g_strdup_printf("Nodos visitados: %d", nodos));
+    //gtk_label_set_text(w->lbl_count, g_strdup_printf("Soluciones: %u", sol_list->len));
+    //gtk_label_set_text(w->lbl_nodes, g_strdup_printf("Nodos visitados: %d", nodos));
 
     // 7) Limpiar viejas filas
     GList *old_rows = gtk_container_get_children(GTK_CONTAINER(w->box_results));
@@ -535,8 +585,9 @@ int main(int argc, char *argv[]) {
         w->selected_mask = NULL;
 
     // Resultados
-    w->lbl_count = GTK_LABEL(gtk_builder_get_object(builder, "lbl_count"));
-    w->lbl_nodes = GTK_LABEL(gtk_builder_get_object(builder, "lbl_nodes"));
+    //w->lbl_count = GTK_LABEL(gtk_builder_get_object(builder, "lbl_count"));
+    //w->lbl_nodes = GTK_LABEL(gtk_builder_get_object(builder, "lbl_nodes"));
+    w->lbl_model = GTK_LABEL(gtk_builder_get_object(builder, "lbl_model"));
     w->box_results = GTK_LIST_BOX(gtk_builder_get_object(builder, "list_solutions"));
     g_return_val_if_fail(GTK_IS_LIST_BOX(w->box_results), 1);
     g_signal_connect(w->box_results, "row-selected", G_CALLBACK(on_solution_selected), w);
