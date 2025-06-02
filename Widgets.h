@@ -16,6 +16,7 @@ typedef struct {
     /* Resultados */
     //GtkLabel     *lbl_count;
     //GtkLabel     *lbl_nodes;
+    GtkLabel     *lbl_critical;
     GtkLabel     *lbl_model;
     GtkListBox   *box_results;
 

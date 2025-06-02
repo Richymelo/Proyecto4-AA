@@ -179,6 +179,27 @@ static gboolean on_draw_bar(GtkDrawingArea *area, cairo_t *cr, gpointer user_dat
 
     return FALSE;
 }
+// Dibujar una estrella en lugar de un punto
+void draw_star(cairo_t *cr, double cx, double cy, double radius) {
+    const int spikes = 5;
+    const double outer_radius = radius * 1.4;
+    const double inner_radius = radius * 0.6;
+
+    cairo_move_to(cr,
+        cx + outer_radius * cos(0),
+        cy - outer_radius * sin(0));
+
+    for (int i = 1; i < spikes * 2; i++) {
+        double angle = i * M_PI / spikes;
+        double r = (i % 2 == 0) ? outer_radius : inner_radius;
+        cairo_line_to(cr,
+            cx + r * cos(angle),
+            cy - r * sin(angle));
+    }
+
+    cairo_close_path(cr);
+    cairo_fill(cr);
+}
 // Dibujar el gráfico estilo parlamento
 static gboolean on_draw_parliament(GtkDrawingArea *area, cairo_t *cr, gpointer user_data) {
     AppWidgets *w = user_data;
@@ -197,12 +218,32 @@ static gboolean on_draw_parliament(GtkDrawingArea *area, cairo_t *cr, gpointer u
 
     // 1) Leer votos y obtener el total
     int votes[12], n = 0, total = 0;
+    int votos_criticos[12] = {0};  // up to 12 voters
+
     while (n < 12 && w->spin_ai[n]) {
         votes[n] = gtk_spin_button_get_value_as_int(w->spin_ai[n]);
         total   += votes[n];
         n++;
     }
     if (n == 0 || total == 0) return FALSE;
+
+    if (sel) {
+        // Recompute if each voter in selected coalition is critical
+        int suma_total = 0;
+        for (int i = 0; i < n; i++) {
+            if (sel[i]) suma_total += gtk_spin_button_get_value_as_int(w->spin_ai[i]);
+        }
+
+        for (int i = 0; i < n; i++) {
+            if (!sel[i]) continue;
+
+            int suma_sin_i = suma_total - gtk_spin_button_get_value_as_int(w->spin_ai[i]);
+            if (suma_total >= gtk_spin_button_get_value_as_int(w->spin_w) &&
+                suma_sin_i < gtk_spin_button_get_value_as_int(w->spin_w)) {
+                votos_criticos[i] = 1;
+            }
+        }
+    }
 
     // 2) Geometría para los márgenes y el centro del círculo
     const double margin  = 20.0;
@@ -217,7 +258,7 @@ static gboolean on_draw_parliament(GtkDrawingArea *area, cairo_t *cr, gpointer u
     // El radio del primer anillo
     double r_base = MIN(cx, cy - dr_logic) - dr_logic;
     // Tamaño de cada punto
-    double dr_draw = dr_logic * 0.6;
+    double dr_draw = dr_logic * 0.8;
 
     // 3) Cada vontante tiene su pedazo triangular
     // Saber donde se está en la mitad del círculo
@@ -274,8 +315,13 @@ static gboolean on_draw_parliament(GtkDrawingArea *area, cairo_t *cr, gpointer u
                 cairo_set_source_rgba(cr, col.red, col.green, col.blue, col.alpha);
 
                 // Pintar el punto
-                cairo_arc(cr, x, y, dr_draw, 0, 2*M_PI);
-                cairo_fill(cr);
+                
+                if (votos_criticos[i] > 0) {
+                    draw_star(cr, x, y, dr_draw);  // replace dot with star
+                } else {
+                    cairo_arc(cr, x, y, dr_draw, 0, 2 * M_PI);
+                    cairo_fill(cr);
+                }
             }
 
             remaining -= draw_count;
@@ -511,6 +557,10 @@ static void on_execute_clicked(GtkButton *btn, gpointer data) {
         }
     }
 
+    char crit_txt[64];
+    snprintf(crit_txt, sizeof(crit_txt), "Cantidad de valores críticos: %d", total_criticos);
+    gtk_label_set_text(GTK_LABEL(w->lbl_critical), crit_txt);
+
     // 7) Limpiar viejas filas
     GList *old_rows = gtk_container_get_children(GTK_CONTAINER(w->box_results));
     for (GList *r = old_rows; r; r = r->next)
@@ -618,6 +668,7 @@ int main(int argc, char *argv[]) {
     //w->lbl_count = GTK_LABEL(gtk_builder_get_object(builder, "lbl_count"));
     //w->lbl_nodes = GTK_LABEL(gtk_builder_get_object(builder, "lbl_nodes"));
     w->lbl_model = GTK_LABEL(gtk_builder_get_object(builder, "lbl_model"));
+    w->lbl_critical = GTK_LABEL(gtk_builder_get_object(builder, "lbl_critical"));
     w->box_results = GTK_LIST_BOX(gtk_builder_get_object(builder, "list_solutions"));
     g_return_val_if_fail(GTK_IS_LIST_BOX(w->box_results), 1);
     g_signal_connect(w->box_results, "row-selected", G_CALLBACK(on_solution_selected), w);
