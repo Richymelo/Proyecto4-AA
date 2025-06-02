@@ -228,7 +228,7 @@ static gboolean on_draw_parliament(GtkDrawingArea *area, cairo_t *cr, gpointer u
     if (n == 0 || total == 0) return FALSE;
 
     if (sel) {
-        // Recompute if each voter in selected coalition is critical
+        // Revisar cuáles son los votantes críticos
         int suma_total = 0;
         for (int i = 0; i < n; i++) {
             if (sel[i]) suma_total += gtk_spin_button_get_value_as_int(w->spin_ai[i]);
@@ -317,7 +317,7 @@ static gboolean on_draw_parliament(GtkDrawingArea *area, cairo_t *cr, gpointer u
                 // Pintar el punto
                 
                 if (votos_criticos[i] > 0) {
-                    draw_star(cr, x, y, dr_draw);  // replace dot with star
+                    draw_star(cr, x, y, dr_draw);  // Reemplazar punto con estrella
                 } else {
                     cairo_arc(cr, x, y, dr_draw, 0, 2 * M_PI);
                     cairo_fill(cr);
