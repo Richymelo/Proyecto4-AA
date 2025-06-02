@@ -8,6 +8,9 @@
 */
 //extern int nodos, soluciones;
 static int *suffix_sum;
+extern int *votos_criticos_global;
+extern int n_votantes_global;
+extern int W_global;
 
 /*
 // ========================
@@ -135,6 +138,15 @@ void sumaSubconjuntosV3_collect(int* A, int n, int W, int index, int* actual_idx
         // Si la suma es mayor o igual a W, es solución
         if (suma_actual >= W) {
             //soluciones++;
+
+            // Aquí se calcula el voto crítico para cada votante en la coalición
+            for (int j = 0; j < tam_actual; j++) {
+                int votante = actual_idx[j];
+                int suma_sin_votante = suma_actual - A[votante];
+                if (suma_sin_votante < W) {
+                    votos_criticos_global[votante]++;
+                }
+            }
             gboolean *mask = g_new0(gboolean, n);
             for (int j = 0; j < tam_actual; j++)
                 mask[ actual_idx[j] ] = TRUE;
