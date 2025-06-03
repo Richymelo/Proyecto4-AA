@@ -147,6 +147,7 @@ void sumaSubconjuntosV3_collect(int* A, int n, int W, int index, int* actual_idx
                     votos_criticos_global[votante]++;
                 }
             }
+            // Se agrega a la lista de soluciones
             gboolean *mask = g_new0(gboolean, n);
             for (int j = 0; j < tam_actual; j++)
                 mask[ actual_idx[j] ] = TRUE;
@@ -155,20 +156,14 @@ void sumaSubconjuntosV3_collect(int* A, int n, int W, int index, int* actual_idx
         return;
     }
 
-    // 2) Rama “incluir A[index]”
+    // 2) Rama “incluir A[índice]”
     actual_idx[tam_actual] = index;
-    sumaSubconjuntosV3_collect(
-        A, n, W,
-        index + 1, actual_idx, tam_actual + 1,
-        suma_actual + A[index], sol_list
-    );
+    sumaSubconjuntosV3_collect(A, n, W, index + 1, actual_idx, tam_actual + 1,
+        suma_actual + A[index], sol_list);
 
-    // 3) Rama “excluir A[index]”
-    sumaSubconjuntosV3_collect(
-        A, n, W,
-        index + 1, actual_idx, tam_actual,
-        suma_actual, sol_list
-    );
+    // 3) Rama “excluir A[índice]”
+    sumaSubconjuntosV3_collect(A, n, W, index + 1, actual_idx, tam_actual,
+        suma_actual, sol_list);
 }
 /*
 // ====================================
